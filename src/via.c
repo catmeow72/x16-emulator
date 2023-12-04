@@ -13,6 +13,7 @@
 //XXX
 #include "glue.h"
 #include "joystick.h"
+#include "plugin.h"
 
 typedef struct {
 	unsigned timer_count[2];
@@ -254,6 +255,8 @@ via1_init()
 uint8_t
 via1_read(uint8_t reg, bool debug)
 {
+	uint8_t output = 0;
+	plugin_get_via1(via[0].registers, reg, &output);
 	// DDR=0 (input)  -> take input bit
 	// DDR=1 (output) -> take output bit
 	// For now, just assume that I2C peripherals always drive all lines and VIA
@@ -263,9 +266,9 @@ via1_read(uint8_t reg, bool debug)
 			if (!debug) via_clear_prb_irqs(&via[0]);
 			if (via[0].registers[11] & 2) {
 				// TODO latching mechanism (requires IEC implementation)
-				return 0;
+				return output;
 			} else {
-				return
+				output |=
 					(~via[0].registers[2] & (
 						(serial_port_read_clk() << 6) |
 						(serial_port_read_data() << 7)
@@ -276,6 +279,7 @@ via1_read(uint8_t reg, bool debug)
 						((!serial_port.in.data) << 5)
 					));
 			}
+			break;
 			
 		case 1: // PA
 		case 15:
@@ -283,24 +287,27 @@ via1_read(uint8_t reg, bool debug)
 			if (!debug) via_clear_pra_irqs(&via[0]);
 			if (via[0].registers[11] & 1) {
 				// CA1 is currently not connected to anything (?)
-				return 0;
+				return output;
 			} else {
-				return (~via[0].registers[3] & i2c_port.data_out) |					//I2C Data: PA0=1 if DDR bit is 0 (input) and data_out is 1; usage of data_out and data_in is a bit confusing...
+				output |= (~via[0].registers[3] & i2c_port.data_out) |					//I2C Data: PA0=1 if DDR bit is 0 (input) and data_out is 1; usage of data_out and data_in is a bit confusing...
 					(via[0].registers[3] & i2c_port.data_in) |						//I2C Data: PA0=1 if DDR bit is 1 (output) and data_in is 1
 					(~via[0].registers[3] & I2C_CLK_MASK ) |						//I2C Clock: PA1=1 if DDR bit is 0 (input), simulating an input pull-up
 					(via[0].registers[3] & i2c_port.clk_in) |						//I2C Clock: PA1=1 if DDR bit is 1 (output) and clk_in is 1, simulating a pin driven by the VIA 
 					Joystick_data;
 			}
+			break;
 
 		default:
-			return via_read(&via[0], reg, debug);
+			output |= via_read(&via[0], reg, debug);
 	}
+	return output;
 }
 
 void
 via1_write(uint8_t reg, uint8_t value)
 {
 	via_write(&via[0], reg, value);
+	plugin_set_via1(via[0].registers, reg, value);
 	if (reg == 0 || reg == 2) {
 		// PB
 		const uint8_t pb = via[0].registers[0] | ~via[0].registers[2];
@@ -347,13 +354,19 @@ via2_init()
 uint8_t
 via2_read(uint8_t reg, bool debug)
 {
-	return via_read(&via[1], reg, debug);
+	uint8_t output = 0;
+	if (plugin_get_via2(via[0].registers, reg, &output)) {
+		return output;
+	} else {
+		return via_read(&via[1], reg, debug);
+	}
 }
 
 void
 via2_write(uint8_t reg, uint8_t value)
 {
 	via_write(&via[1], reg, value);
+	plugin_set_via2(via[1].registers, reg, value);
 }
 
 void

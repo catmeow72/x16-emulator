@@ -17,6 +17,7 @@
 #include "audio.h"
 #include "cartridge.h"
 #include "iso_8859_15.h"
+#include "plugin.h"
 
 uint8_t ram_bank;
 uint8_t rom_bank;
@@ -161,6 +162,9 @@ real_read6502(uint16_t address, bool debugOn, uint8_t bank)
 				return YM_read_status();
 			}
 			return 0x9f; // open bus read
+		} else if ((address >= 0x9f60 && address < 0x9fa0) || address >= 0x9fc0) {
+			// expansion cards
+			return plugin_get_io(((address - 0x9f60) / 0x20)+3, (address - 0x9f60) % 0x20);
 		} else if (address >= 0x9fb0 && address < 0x9fc0) {
 			// emulator state
 			return emu_read(address & 0xf, debugOn);
@@ -218,6 +222,9 @@ write6502(uint16_t address, uint8_t value)
 			via1_write(address & 0xf, value);
 		} else if (has_via2 && (address >= 0x9f10 && address < 0x9f20)) {
 			via2_write(address & 0xf, value);
+		} else if ((address >= 0x9f60 && address < 0x9fa0) || address >= 0x9fc0) {
+			// expansion cards
+			plugin_set_io(((address - 0x9f60) / 0x20)+3, value, (address - 0x9f60) % 0x20);
 		} else if (address >= 0x9f20 && address < 0x9f40) {
 			video_write(address & 0x1f, value);
 		} else if (address >= 0x9f40 && address < 0x9f60) {

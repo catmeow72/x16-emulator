@@ -42,6 +42,7 @@
 #include "wav_recorder.h"
 #include "testbench.h"
 #include "cartridge.h"
+#include "plugin.h"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -480,6 +481,8 @@ usage()
 	printf("-enable-ym2151-irq\n");
 	printf("\tConnect the YM2151 IRQ source to the emulated CPU. This option increases\n");
 	printf("\tCPU usage as audio render is triggered for every CPU instruction.\n");
+	printf("-plugin <plugin file>\n");
+	printf("\tLoads a plugin from the specified plugin file.\n");
 #ifdef TRACE
 	printf("-trace [<address>]\n");
 	printf("\tPrint instruction trace. Optionally, a trigger address\n");
@@ -529,6 +532,7 @@ main(int argc, char **argv)
 	memcpy(rom_path, base_path, strlen(base_path) + 1);
 	strncpy(rom_path + strlen(rom_path), rom_filename, PATH_MAX - strlen(rom_path));
 	memory_randomize_ram(true);
+	plugin_system_init();
 
 	argc--;
 	argv++;
@@ -976,6 +980,18 @@ main(int argc, char **argv)
 			argc--;
 			argv++;
 			ym2151_irq_support = true;
+		
+		} else if (!strcmp(argv[0], "-plugin")) {
+			argc--;
+			argv++;
+			if (!argc || argv[0][0] == '-') {
+				usage();
+			}
+			if (!plugin_load(argv[0])) {
+				usage();
+			}
+			argc--;
+			argv++;
 		} else {
 			usage();
 		}
@@ -1459,6 +1475,7 @@ emulator_loop(void *param)
 		uint32_t clocks = clockticks6502 - old_clockticks6502;
 		old_clockticks6502 = clockticks6502;
 		bool new_frame = false;
+		plugin_step(MHZ, clocks);
 		via1_step(clocks);
 		vera_spi_step(clocks);
 		if (has_serial) {

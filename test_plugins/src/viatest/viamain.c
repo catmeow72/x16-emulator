@@ -5,7 +5,7 @@
 #include <stddef.h>
 uint32_t ticks;
 void _step(float mhz, float clocks) {
-	ticks += (uint32_t)((clocks / mhz) * 100);
+	ticks += (uint32_t)((clocks / mhz) * 101);
 }
 uint8_t _get_via1(uint8_t *regs, uint8_t reg, uint8_t *ptr) {
 	if (reg == 0) {

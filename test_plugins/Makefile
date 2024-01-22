@@ -85,6 +85,7 @@ all: build_plugins
 $(eval $(call ADD_PLUGIN,iotest))
 $(eval $(call ADD_PLUGIN,viatest))
 $(eval $(call ADD_PLUGIN,tcptest))
+$(eval $(call ADD_PLUGIN,ptytest))
 build_plugins: $(ALL_PLUGINS)
 clean: $(CLEAN_TARGETS)
 plugins: $(PLUGIN_DISPLAYERS)

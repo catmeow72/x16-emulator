@@ -170,6 +170,12 @@ void _io_write(uint8_t data, uint8_t idx) {
 		} break;
 	}
 }
+void _deinit() {
+	for (size_t i = 0; i < 2; i++) {
+		close(regs[i].sock);
+	}
+	free(regs);
+}
 PLUGIN_NAME("IO plugin test");
 clinkage void main(plugin_t *plugin) {
 	regs = (TCPRegs*)malloc(sizeof(TCPRegs) * 2);
@@ -178,6 +184,7 @@ clinkage void main(plugin_t *plugin) {
 	plugin->get_io_base = &_get_iobase;
 	plugin->get_io = &_io_read;
 	plugin->set_io = &_io_write;
+	plugin->deinit = &_deinit;
 }
 void _step(float mhz, float clocks) {
 	for (size_t i = 0; i < 2; i++) {
